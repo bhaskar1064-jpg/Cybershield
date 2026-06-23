@@ -29,6 +29,15 @@ interface ApiConfig {
   rateLimitingEnabled: boolean;
 }
 
+interface APISecret {
+  id: string;
+  file: string;
+  type: string;
+  valueMasked: string;
+  status: 'exposed' | 'vaulted';
+  riskLevel: 'Critical' | 'Safe';
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<string>('executive');
 
@@ -52,6 +61,12 @@ function App() {
     domainCheckingEnabled: false,
     rateLimitingEnabled: false
   });
+
+  // API Secrets Exposure auditor state
+  const [secrets, setSecrets] = useState<APISecret[]>([
+    { id: 'sec-1', file: 'config/database.ts', type: 'Database Connection String', valueMasked: 'mongodb+srv://admin:P@ssw******@prod-cluster', status: 'exposed', riskLevel: 'Critical' },
+    { id: 'sec-2', file: 'src/services/stripe.ts', type: 'Stripe API Secret Key', valueMasked: 'sk_live_51Nz******x8V9', status: 'exposed', riskLevel: 'Critical' }
+  ]);
 
   // Timeline audit logs state
   const [logs, setLogs] = useState<string[]>([
@@ -119,6 +134,17 @@ function App() {
     ]);
   };
 
+  const handleMigrateSecrets = () => {
+    setSecrets((prev) =>
+      prev.map((sec) => ({ ...sec, status: 'vaulted', riskLevel: 'Safe' }))
+    );
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs((prev) => [
+      ...prev,
+      `${timestamp} - [REMEDIATED] Migrated hardcoded API keys and database credentials to key vault. Removed code-level exposures.`
+    ]);
+  };
+
   // Dynamic risk scores calculations
   const identityDisabled = endpoints.filter((ep) => ep.mfaStatus === 'disabled').length;
   const identityRisk = (identityDisabled / endpoints.length) * 100;
@@ -135,7 +161,10 @@ function App() {
     (apiConfig.rateLimitingEnabled ? 0 : 1);
   const apiRisk = (apiDisabled / 3) * 100;
 
-  const bviScore = (identityRisk + cloudRisk + apiRisk) / 3;
+  const exposedSecrets = secrets.filter((sec) => sec.status === 'exposed').length;
+  const secretsRisk = (exposedSecrets / secrets.length) * 100;
+
+  const bviScore = (identityRisk + cloudRisk + apiRisk + secretsRisk) / 4;
 
   // Circle Gauge SVG configuration
   const circleRadius = 36;
@@ -319,7 +348,12 @@ function App() {
           )}
 
           {activeTab === 'api' && (
-            <ApiGuard config={apiConfig} onChangeConfig={handleApiChange} />
+            <ApiGuard
+              config={apiConfig}
+              onChangeConfig={handleApiChange}
+              secrets={secrets}
+              onMigrateSecrets={handleMigrateSecrets}
+            />
           )}
         </main>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sliders, Play, Code, AlertCircle } from 'lucide-react';
+import { Sliders, Play, Code, AlertCircle, Key, Lock, Unlock } from 'lucide-react';
 
 interface ApiConfig {
   oauthEnforced: boolean;
@@ -7,14 +7,25 @@ interface ApiConfig {
   rateLimitingEnabled: boolean;
 }
 
+interface APISecret {
+  id: string;
+  file: string;
+  type: string;
+  valueMasked: string;
+  status: 'exposed' | 'vaulted';
+  riskLevel: 'Critical' | 'Safe';
+}
+
 interface ApiGuardProps {
   config: ApiConfig;
   onChangeConfig: (key: keyof ApiConfig, value: boolean) => void;
+  secrets: APISecret[];
+  onMigrateSecrets: () => void;
 }
 
 type AttackType = 'idor' | 'flood' | 'sqli';
 
-export const ApiGuard: React.FC<ApiGuardProps> = ({ config, onChangeConfig }) => {
+export const ApiGuard: React.FC<ApiGuardProps> = ({ config, onChangeConfig, secrets, onMigrateSecrets }) => {
   const [simulationLogs, setSimulationLogs] = useState<string[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
   const [attackType, setAttackType] = useState<AttackType>('idor');
@@ -385,6 +396,80 @@ Content-Type: application/json
                 })
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* NEW: API Keys & Secrets Exposure Auditor Panel */}
+      <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <Key className="w-4.5 h-4.5 text-amber-500" />
+              API Keys & Secrets Exposure Auditor
+            </h3>
+            <p className="text-slate-400 text-xs mt-1">
+              Audit workspace directory structures for hardcoded credentials, third-party API tokens, and database authentication strings.
+            </p>
+          </div>
+          <button
+            onClick={onMigrateSecrets}
+            disabled={secrets.every((sec) => sec.status === 'vaulted')}
+            className={`px-4 py-2.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-md ${
+              secrets.every((sec) => sec.status === 'vaulted')
+                ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed shadow-none'
+                : 'bg-amber-500 hover:bg-amber-600 text-slate-950 hover:shadow-amber-500/20 active:scale-95'
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5" />
+            {secrets.every((sec) => sec.status === 'vaulted') ? 'All Secrets Vaulted' : 'Rotate & Migrate to Key Vault'}
+          </button>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-950/50 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 bg-slate-950 font-bold uppercase tracking-wider">
+                  <th className="py-3 px-5">Target File Path</th>
+                  <th className="py-3 px-5">Credential Type</th>
+                  <th className="py-3 px-5 font-mono">Masked Secret String</th>
+                  <th className="py-3 px-5">Exposure Status</th>
+                  <th className="py-3 px-5 text-right">Risk Level</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/40 text-slate-300 font-mono">
+                {secrets.map((sec) => (
+                  <tr key={sec.id} className="hover:bg-slate-900/20 transition-colors">
+                    <td className="py-3.5 px-5 font-semibold text-slate-200">{sec.file}</td>
+                    <td className="py-3.5 px-5 text-slate-400">{sec.type}</td>
+                    <td className="py-3.5 px-5 text-slate-500 text-2xs">{sec.valueMasked}</td>
+                    <td className="py-3.5 px-5">
+                      {sec.status === 'vaulted' ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 text-3xs font-bold font-sans">
+                          <Lock className="w-3 h-3" />
+                          VAULT ENCRYPTED
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 text-3xs font-bold font-sans animate-pulse">
+                          <Unlock className="w-3 h-3" />
+                          EXPOSED IN CODE
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-5 text-right">
+                      <span className={`inline-block px-2 py-0.5 rounded font-sans text-3xs font-extrabold ${
+                        sec.status === 'vaulted'
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                      }`}>
+                        {sec.status === 'vaulted' ? 'SAFE' : sec.riskLevel}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
