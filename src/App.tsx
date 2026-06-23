@@ -65,7 +65,8 @@ function App() {
   // API Secrets Exposure auditor state
   const [secrets, setSecrets] = useState<APISecret[]>([
     { id: 'sec-1', file: 'config/database.ts', type: 'Database Connection String', valueMasked: 'mongodb+srv://admin:P@ssw******@prod-cluster', status: 'exposed', riskLevel: 'Critical' },
-    { id: 'sec-2', file: 'src/services/stripe.ts', type: 'Stripe API Secret Key', valueMasked: 'sk_live_51Nz******x8V9', status: 'exposed', riskLevel: 'Critical' }
+    { id: 'sec-2', file: 'src/services/stripe.ts', type: 'Stripe API Secret Key', valueMasked: 'sk_live_51Nz******x8V9', status: 'exposed', riskLevel: 'Critical' },
+    { id: 'sec-3', file: 'src/services/payment.ts', type: 'Payment Gateway API Key', valueMasked: 'AQ.Ab8RN6Le******g8UQ', status: 'exposed', riskLevel: 'Critical' }
   ]);
 
   // Timeline audit logs state
