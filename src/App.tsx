@@ -335,6 +335,7 @@ function App() {
               identityRisk={identityRisk}
               cloudRisk={cloudRisk}
               apiRisk={apiRisk}
+              secretsRisk={secretsRisk}
               setActiveTab={setActiveTab}
               logs={logs}
             />
